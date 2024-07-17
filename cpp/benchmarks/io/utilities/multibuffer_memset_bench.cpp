@@ -95,8 +95,8 @@ using d_type_list = nvbench::enum_type_list<data_type::INTEGRAL,
 NVBENCH_BENCH_TYPES(bench_multibuffer_memset, NVBENCH_TYPE_AXES(d_type_list))
   .set_name("multibufffer_memset")
   .set_type_axes_names({"data_type"})
-  .add_int64_axis("num_cols", {1000, 2000})
-  .add_string_axis("io_type", {"FILEPATH", "HOST_BUFFER", "DEVICE_BUFFER"})
+  .add_int64_axis("num_cols", {1000})
+  .add_string_axis("io_type", {"DEVICE_BUFFER"})
   .set_min_samples(4)
   .add_int64_axis("cardinality", {0, 1000})
   .add_int64_axis("run_length", {1, 32});
