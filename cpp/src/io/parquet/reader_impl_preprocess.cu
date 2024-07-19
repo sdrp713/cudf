@@ -22,8 +22,6 @@
 #include <cudf/detail/utilities/integer_utils.hpp>
 #include <cudf/detail/utilities/vector_factories.hpp>
 
-#include <io/utilities/multibuffer_memset.hpp>
-
 #include <rmm/exec_policy.hpp>
 
 #include <cuda/functional>
@@ -42,6 +40,8 @@
 #include <thrust/transform.h>
 #include <thrust/transform_scan.h>
 #include <thrust/unique.h>
+
+#include <io/utilities/multibuffer_memset.hpp>
 
 #include <bitset>
 #include <numeric>
@@ -1511,8 +1511,10 @@ void reader::impl::allocate_columns(read_mode mode, size_t skip_rows, size_t num
           cudf::mask_state::UNINITIALIZED,
           _stream,
           _mr);
-        memset_bufs.push_back(cudf::device_span<uint64_t>((uint64_t *)(out_buf.data()), out_buf.data_size()));
-        nullmask_bufs.push_back(cudf::device_span<uint64_t>((uint64_t *)(out_buf.null_mask()), out_buf.null_mask_size()));
+        memset_bufs.push_back(cudf::device_span<uint64_t>(static_cast<uint64_t*>(out_buf.data()),
+                                                          out_buf.data_size() / 8));
+        nullmask_bufs.push_back(cudf::device_span<uint64_t>(
+          reinterpret_cast<uint64_t*>(out_buf.null_mask()), out_buf.null_mask_size() / 8));
       }
     }
   }
@@ -1589,15 +1591,16 @@ void reader::impl::allocate_columns(read_mode mode, size_t skip_rows, size_t num
           // allocate
           // we're going to start null mask as all valid and then turn bits off if necessary
           out_buf.create_with_mask(size, cudf::mask_state::UNINITIALIZED, _stream, _mr);
-          memset_bufs.push_back(cudf::device_span<uint64_t>((uint64_t *)(out_buf.data()), out_buf.data_size()));
-          nullmask_bufs.push_back(cudf::device_span<uint64_t>((uint64_t *)(out_buf.null_mask()), out_buf.null_mask_size()));
-
+          memset_bufs.push_back(cudf::device_span<uint64_t>(static_cast<uint64_t*>(out_buf.data()),
+                                                            out_buf.data_size() / 8));
+          nullmask_bufs.push_back(cudf::device_span<uint64_t>(
+            reinterpret_cast<uint64_t*>(out_buf.null_mask()), out_buf.null_mask_size() / 8));
         }
       }
     }
   }
-  multibuffer_memset(memset_bufs, 0, _stream, _mr);
-  multibuffer_memset(nullmask_bufs, 0xFF, _stream, _mr);
+  multibuffer_memset(memset_bufs, 0UL, _stream, _mr);
+  multibuffer_memset(nullmask_bufs, 0xFFFFFFFFFFFFFFFF, _stream, _mr);
 }
 
 std::vector<size_t> reader::impl::calculate_page_string_offsets()
